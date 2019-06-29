@@ -184,7 +184,7 @@ if __name__ == '__main__':
                          help='Instruct the driver to reset the contents of the database')
     aparser.add_argument('--scalefactor', default=1, type=float, metavar='SF',
                          help='Benchmark scale factor')
-    aparser.add_argument('--warehouses', default=4, type=int, metavar='W',
+    aparser.add_argument('--warehouses', default=2, type=int, metavar='W', # TODO 4
                          help='Number of Warehouses')
     aparser.add_argument('--duration', default=60, type=int, metavar='D',
                          help='How long to run the benchmark in seconds')

@@ -310,7 +310,7 @@ class Loader:
         if original: self.fillOriginal(s_data)
 
         s_dists = [ ]
-        for i in range(0, constants.DISTRICTS_PER_WAREHOUSE):
+        for i in range(0, 10): #TODO constants.DISTRICTS_PER_WAREHOUSE):
             s_dists.append(rand.astring(constants.DIST, constants.DIST))
         
         return [ s_i_id, s_w_id, s_quantity ] + \
