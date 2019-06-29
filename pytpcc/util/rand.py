@@ -40,24 +40,31 @@ def setNURand(nu):
     nurandVar = nu
 ## DEF
 
+aLast = 255
+aCustomerId = 1023
+aItemId = 8191
+
 def NURand(a, x, y):
     """A non-uniform random number, as defined by TPC-C 2.1.6. (page 20)."""
     global nurandVar
     assert x <= y
     if nurandVar is None:
-		setNURand(nurand.makeForLoad())
+        setNURand(nurand.makeForLoad())
     
-    if a == 255:
+    if a == aLast:
         c = nurandVar.cLast
-    elif a == 1023:
+    elif a == aCustomerId:
         c = nurandVar.cId
-    elif a == 8191:
+    elif a == aItemId:
         c = nurandVar.orderLineItemId
     else:
         raise Exception("a = " + a + " is not a supported value")
     
     return (((number(0, a) | number(x, y)) + c) % (y - x + 1)) + x
 ## DEF
+
+def randint(maximum):
+    return random.randint(maximum)
 
 def number(minimum, maximum):
     value = random.randint(minimum, maximum)
@@ -95,6 +102,7 @@ def fixedPoint(decimal_places, minimum, maximum):
 
 def selectUniqueIds(numUnique, minimum, maximum):
     rows = set()
+    numUnique = int(numUnique) #TODO float was passed 
     for i in range(0, numUnique):
         index = None
         while index == None or index in rows:
@@ -129,7 +137,7 @@ def makeLastName(number):
     """A last name as defined by TPC-C 4.3.2.3. Not actually random."""
     global SYLLABLES
     assert 0 <= number and number <= 999
-    indicies = [ number/100, (number/10)%10, number%10 ]
+    indicies = [ int(number/100), int((number/10)%10), int(number%10) ] #TODO float to int
     return "".join(map(lambda x: SYLLABLES[x], indicies))
 ## DEF
 
