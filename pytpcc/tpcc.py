@@ -35,14 +35,14 @@ import argparse
 import glob
 import time 
 import multiprocessing
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 from pprint import pprint,pformat
 
 from util import *
 from runtime import *
 import drivers
 
-logging.basicConfig(level = logging.INFO,
+logging.basicConfig(level = logging.DEBUG,
                     format="%(asctime)s [%(funcName)s:%(lineno)03d] %(levelname)-5s: %(message)s",
                     datefmt="%m-%d-%Y %H:%M:%S",
                     stream = sys.stdout)
@@ -53,6 +53,7 @@ logging.basicConfig(level = logging.INFO,
 def createDriverClass(name):
     full_name = "%sDriver" % name.title()
     mod = __import__('drivers.%s' % full_name.lower(), globals(), locals(), [full_name])
+
     klass = getattr(mod, full_name)
     return klass
 ## DEF
@@ -113,8 +114,8 @@ def loaderFunc(driverClass, scaleParameters, args, config, w_ids, debug):
         l.execute()
         driver.loadFinish()   
     except KeyboardInterrupt:
-            return -1
-    except (Exception, AssertionError), ex:
+        return -1
+    except (Exception, AssertionError) as ex:
         logging.warn("Failed to load data: %s" % (ex))
         #if debug:
         traceback.print_exc(file=sys.stdout)
@@ -177,7 +178,7 @@ if __name__ == '__main__':
     aparser = argparse.ArgumentParser(description='Python implementation of the TPC-C Benchmark')
     aparser.add_argument('system', choices=getDrivers(),
                          help='Target system driver')
-    aparser.add_argument('--config', type=file,
+    aparser.add_argument('--config', type=argparse.FileType('r'),
                          help='Path to driver configuration file')
     aparser.add_argument('--reset', action='store_true',
                          help='Instruct the driver to reset the contents of the database')
@@ -204,16 +205,17 @@ if __name__ == '__main__':
     args = vars(aparser.parse_args())
 
     if args['debug']: logging.getLogger().setLevel(logging.DEBUG)
-        
+
     ## Create a handle to the target client driver
     driverClass = createDriverClass(args['system'])
     assert driverClass != None, "Failed to find '%s' class" % args['system']
     driver = driverClass(args['ddl'])
     assert driver != None, "Failed to create '%s' driver" % args['system']
+
     if args['print_config']:
         config = driver.makeDefaultConfig()
-        print driver.formatConfig(config)
-        print
+        print(driver.formatConfig(config))
+        print()
         sys.exit(0)
 
     ## Load Configuration file
@@ -263,7 +265,7 @@ if __name__ == '__main__':
         else:
             results = startExecution(driverClass, scaleParameters, args, config)
         assert results
-        print results.show(load_time)
+        print(results.show(load_time))
     ## IF
     
 ## MAIN

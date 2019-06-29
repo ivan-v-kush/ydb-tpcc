@@ -40,6 +40,7 @@ from pprint import pprint,pformat
 import constants
 from util import *
 
+LOAD = True
 class Loader:
     
     def __init__(self, handle, scaleParameters, w_ids, needLoadItems):
@@ -56,7 +57,7 @@ class Loader:
         
         ## Item Table
         if self.needLoadItems:
-            logging.debug("Loading ITEM table")
+            logging.info("Loading ITEM table")
             self.loadItems()
             self.handle.loadFinishItem()
             
@@ -72,6 +73,9 @@ class Loader:
     ## loadItems
     ## ==============================================
     def loadItems(self):
+        #TODO UNCOMMENT
+        #return
+    
         ## Select 10% of the rows to be marked "original"
         originalRows = rand.selectUniqueIds(self.scaleParameters.items / 10, 1, self.scaleParameters.items)
         
@@ -100,6 +104,7 @@ class Loader:
         
         ## WAREHOUSE
         w_tuples = [ self.generateWarehouse(w_id) ]
+        logging.info("Loading WAREHOUSE table")
         self.handle.loadTuples(constants.TABLENAME_WAREHOUSE, w_tuples)
 
         ## DISTRICT
@@ -149,12 +154,19 @@ class Loader:
                 if newOrder: no_tuples.append([o_id, d_id, w_id])
             ## FOR
             
+            logging.info("Loading DISTRICT table")
             self.handle.loadTuples(constants.TABLENAME_DISTRICT, d_tuples)
+            logging.info("Loading CUSTOMER table")
             self.handle.loadTuples(constants.TABLENAME_CUSTOMER, c_tuples)
+            logging.info("Loading ORDERS table")
             self.handle.loadTuples(constants.TABLENAME_ORDERS, o_tuples)
+            logging.info("Loading ORDERS_LINE table")
             self.handle.loadTuples(constants.TABLENAME_ORDER_LINE, ol_tuples)
+            logging.info("Loading NEW_ORDER table")
             self.handle.loadTuples(constants.TABLENAME_NEW_ORDER, no_tuples)
+            logging.info("Loading HISTORY table")
             self.handle.loadTuples(constants.TABLENAME_HISTORY, h_tuples)
+            logging.info("Loading FinishDistrict")
             self.handle.loadFinishDistrict(w_id, d_id)
         ## FOR
         
@@ -167,12 +179,14 @@ class Loader:
             s_tuples.append(self.generateStock(w_id, i_id, original))
             if len(s_tuples) >= self.batch_size:
                 logging.debug("LOAD - %s [W_ID=%d]: %5d / %d" % (constants.TABLENAME_STOCK, w_id, total_tuples, self.scaleParameters.items))
+                logging.debug("Loading STOCK table")
                 self.handle.loadTuples(constants.TABLENAME_STOCK, s_tuples)
                 s_tuples = [ ]
             total_tuples += 1
         ## FOR
         if len(s_tuples) > 0:
             logging.debug("LOAD - %s [W_ID=%d]: %5d / %d" % (constants.TABLENAME_STOCK, w_id, total_tuples, self.scaleParameters.items))
+            logging.debug("Loading STOCK table")
             self.handle.loadTuples(constants.TABLENAME_STOCK, s_tuples)
     ## DEF
 
