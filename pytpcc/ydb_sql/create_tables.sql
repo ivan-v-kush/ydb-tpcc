@@ -92,7 +92,7 @@ ol_i_id Int,
 ol_supply_w_id Int,
 ol_delivery_d Datetime, 
 ol_quantity Int, 
-ol_amount Decimal(6,2), 
+ol_amount Decimal(22,9), 
 ol_dist_info String,
 PRIMARY KEY(ol_o_id, ol_d_id, ol_w_id, ol_number));
 
