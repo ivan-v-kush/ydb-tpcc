@@ -10,8 +10,10 @@ from pprint import pprint,pformat
 import constants
 from abstractdriver import *
 import pdb
-import ydb_queries as queries
-from ydb_columns import *
+
+import ydb.queries as queries
+from ydb.columns import *
+import ydb.data as ydb_data
 
 def is_directory_exists(driver, path):
     try:
@@ -165,7 +167,6 @@ class YdbDriver(AbstractDriver):
     ## ----------------------------------------------
     ## loadTuples
     ## ----------------------------------------------
-
     def loadTuples(self, tableName, tuples):
         len_tuples = len(tuples)
         logging.info("Data count: {}".format(len_tuples))
@@ -179,16 +180,6 @@ class YdbDriver(AbstractDriver):
             INSERT INTO {} ({})
             VALUES ({});
             """
-
-        #TODO
-        #gg="""PRAGMA TablePathPrefix("{}");
-        #    DECLARE $a AS Int;
-        #    DECLARE $b AS Int;
-        #    DECLARE $c AS Int;
-        #    DECLARE $c_sin AS String;
-        #    INSERT INTO customer (c_id, c_d_id, c_w_id, c_since)
-        #    VALUES ($a, $b, $c, CAST($c_sin AS Datetime));
-        #    """
 
         for data in tuples:
             data = list(map(( lambda x: prepare_type_for_ydb(x)), data))
@@ -206,7 +197,7 @@ class YdbDriver(AbstractDriver):
                 # '$c_sin': str.encode(data[12])},
                 commit_tx=True
             )
-        logging.debug("Losecondary_index/app/repository.pyaded %d tuples for tableName %s" % (len(tuples), tableName))
+        logging.debug("Loaded %d tuples for tableName %s" % (len(tuples), tableName))
         return
     
     ## ----------------------------------------------
@@ -215,25 +206,19 @@ class YdbDriver(AbstractDriver):
     def TODOloadTuples(self, tableName, tuples):
         if len(tuples) == 0: return
         
-        #TODO 1-ой командой? self.cursor.executemany(sql, tuples)
-        columns = TABLE_COLUMNS[tableName]
-        subs = list(map(( lambda x: '$' + x), columns))
-        
-        columns_str = ",".join(columns) 
-        subs_str = ",".join(subs) 
-        sql = "INSERT INTO {} ({}) VALUES ({})".format(tableName, columns_str, subs_str)
+        data = ydb_data.PREPARE[tableName](tuples)
+        query = queries.FILL[tableName]
+        var = queries.FILL_VAR[tableName]
 
-        for data in tuples:
-            self.session.transaction(ydb.SerializableReadWrite()).execute(
-                sql, {
-                    '$seriesId': series_id,
-                    '$seasonId': season_id,
-                    '$episodeId': episode_id,
-                },
-                commit_tx=True
-            )
-        
-        logging.debug("Losecondary_index/app/repository.pyaded %d tuples for tableName %s" % (len(tuples), tableName))
+        prepared_query = self.prepareQuery(query)
+        session.transaction(ydb.SerializableReadWrite()).execute(
+            prepared_query,
+            commit_tx=True,
+            parameters={
+                var: data
+            }
+        )
+        logging.debug("Loaded %d tuples for tableName %s" % (len(tuples), tableName))
         return
 
     ## ----------------------------------------------
@@ -563,7 +548,6 @@ class YdbDriver(AbstractDriver):
         # Commit!
         tx.commit()
 
-        pdb.set_trace()
         ## Adjust the total for the discount
         #print "c_discount:", c_discount, type(c_discount)
         #print "w_tax:", w_tax, type(w_tax)
@@ -572,7 +556,6 @@ class YdbDriver(AbstractDriver):
 
         ## Pack up values the client is missing (see TPC-C 2.4.3.5)
         misc = [ (w_tax, d_tax, d_next_o_id, total) ]
-        pdb.set_trace()
         #TODO returns
         return [ customer_info, misc, item_data ]
 
@@ -632,8 +615,15 @@ class YdbDriver(AbstractDriver):
         order = order[0].rows[0]
 
         if order:
-            self.cursor.execute(q.getOrderLines, [w_id, d_id, order['o_id']])
-            orderLines = self.cursor.fetchall()
+            prepared_query = self.prepareQuery(q.getOrderLines)
+            orderLines = tx.execute(
+                prepared_query, {
+                    '$ol_o_id': order['o_id'],
+                    '$ol_d_id': d_id,
+                    '$ol_w_id': w_id
+                }
+            )
+            orderLines = orderLines[0].rows[0]
         else:
             orderLines = [ ]
 
@@ -707,18 +697,56 @@ class YdbDriver(AbstractDriver):
         )
         district = district[0].rows[0]
         
-        self.cursor.execute(q.updateWarehouseBalance, [h_amount, w_id])
-        self.cursor.execute(q.updateDistrictBalance, [h_amount, w_id, d_id])
+        prepared_query = self.prepareQuery(q.updateWarehouseBalance)
+        tx.execute(
+            prepared_query, {
+                '$w_id': w_id,
+                '$delta_w_ytd': h_amount
+            }
+        )
+
+        prepared_query = self.prepareQuery(q.updateDistrictBalance)
+        tx.execute(
+            prepared_query, {
+                '$d_w_id': w_id,
+                '$d_d_id': d_id,
+                '$delta_d_ytd': h_amount
+            }
+        )
 
         # Customer Credit Information
         if customer['c_credit'] == constants.BAD_CREDIT:
             newData = " ".join(map(str, [c_id, c_d_id, c_w_id, d_id, w_id, h_amount]))
             c_data = (newData + "|" + c_data)
             if len(c_data) > constants.MAX_C_DATA: c_data = c_data[:constants.MAX_C_DATA]
-            self.cursor.execute(q.updateBCCustomer, [c_balance, c_ytd_payment, c_payment_cnt, c_data, c_w_id, c_d_id, c_id])
+
+            prepared_query = self.prepareQuery(q.updateBCCustomer)
+            customer = tx.execute(
+                prepared_query, {
+                    '$c_balance': c_balance,
+                    '$c_ytd_payment': c_ytd_payment,
+                    '$c_payment_cnt': c_payment_cnt,
+                    '$c_data': c_data,
+                    '$c_id': c_id,
+                    '$c_d_id': d_id,
+                    '$c_w_id': w_id
+                }
+            )
+            customer = customer[0].rows[0]
         else:
             c_data = ""
-            self.cursor.execute(q.updateGCCustomer, [c_balance, c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id])
+            prepared_query = self.prepareQuery(q.updateGCCustomer)
+            customer = tx.execute(
+                prepared_query, {
+                    '$c_balance': c_balance,
+                    '$c_ytd_payment': c_ytd_payment,
+                    '$c_payment_cnt': c_payment_cnt,
+                    '$c_id': c_id,
+                    '$c_d_id': d_id,
+                    '$c_w_id': w_id
+                }
+            )
+            customer = customer[0].rows[0]
 
         # Concatenate w_name, four spaces, d_name
         h_data = '{}    {}'.format(warehouse['w_id'], district['d_id'])

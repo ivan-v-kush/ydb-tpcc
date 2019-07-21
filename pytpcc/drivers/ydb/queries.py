@@ -1,3 +1,61 @@
+import constants
+
+
+class FILL_QUERIES:
+
+    warehouse = """
+        DECLARE $warehouseData AS "List<Struct<
+        w_id Int,
+        w_name String, 
+        w_street_1 String, 
+        w_street_2 String, 
+        w_city String, 
+        w_state String, 
+        w_zip String, 
+        w_tax Decimal(4,2), 
+        w_ytd Decimal(12,2)
+        >>";
+        
+        REPLACE INTO warehouse
+        SELECT
+            w_id,
+            w_name,
+            w_street_1,
+            w_street_2,
+            w_city,
+            w_state,
+            w_zip,
+            w_tax,
+            w_ytd
+        FROM AS_TABLE($warehouseData);
+        """ # w_id
+
+
+FILL = {
+    constants.TABLENAME_WAREHOUSE:  FILL_QUERIES.warehouse,   
+#    constants.TABLENAME_ITEM:       prepare_item_data,
+#    constants.TABLENAME_DISTRICT:   prepare_district_data,
+#    constants.TABLENAME_CUSTOMER:   prepare_customer_data,
+#    constants.TABLENAME_STOCK:      prepare_stock_data,
+#    constants.TABLENAME_ORDERS:     prepare_orders_data,
+#    constants.TABLENAME_NEW_ORDER:  prepare_new_order_data,
+#    constants.TABLENAME_ORDER_LINE: prepare_order_line_data,
+#    constants.TABLENAME_HISTORY:    prepare_history_data,
+}
+
+
+FILL_VAR = {
+    constants.TABLENAME_WAREHOUSE:  '$warehouseData',   
+#    constants.TABLENAME_ITEM:       prepare_item_data,
+#    constants.TABLENAME_DISTRICT:   prepare_district_data,
+#    constants.TABLENAME_CUSTOMER:   prepare_customer_data,
+#    constants.TABLENAME_STOCK:      prepare_stock_data,
+#    constants.TABLENAME_ORDERS:     prepare_orders_data,
+#    constants.TABLENAME_NEW_ORDER:  prepare_new_order_data,
+#    constants.TABLENAME_ORDER_LINE: prepare_order_line_data,
+#    constants.TABLENAME_HISTORY:    prepare_history_data,
+}
+
 class NEW_ORDER:
     
     getWarehouseTaxRate = """
